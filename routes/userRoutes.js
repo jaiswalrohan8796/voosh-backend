@@ -3,7 +3,50 @@ const user_controller = require("../controllers/User.js");
 
 const router = require("express").Router();
 
-router.post("/signup", async (req, res, next) => {
+function getTokenFromHeader(req) {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7); // Remove "Bearer " prefix
+        return token;
+    }
+    return null;
+}
+const authenticate_user = async (req, res, next) => {
+    try {
+        const token = getTokenFromHeader(req);
+        if (!token) {
+            throw new Error("Un-Authorized. Please Login");
+        }
+        const user = utils.verify_jwt_token(token);
+        if (!user.email) {
+            throw new Error("Authorization token incorrect");
+        }
+        const user_exist = user_controller.checkUserExists(user.email);
+        if (!user_exist) {
+            throw new Error("Authorization token incorrect");
+        }
+        let success_res = {
+            success: true,
+            data: user_exist,
+            error: {},
+        };
+        res.json(success_res);
+    } catch (err) {
+        console.log(err);
+        let error_res = {
+            success: false,
+            data: {},
+            error: {
+                code: 500,
+                message: err.message,
+            },
+        };
+        res.json(error_res);
+    }
+};
+
+router.post("/add-user", async (req, res, next) => {
     try {
         const user_info = req.body;
         //check user
@@ -42,11 +85,6 @@ router.post("/signup", async (req, res, next) => {
     }
 });
 
-router.post("/add-user", (req, res, next) => {
-    const { name, phone_number, password } = req.body;
-    res.json({ name, phone_number, password });
-});
-
 router.post("/login", async (req, res, next) => {
     try {
         const { email, password } = req.body;
@@ -63,11 +101,11 @@ router.post("/login", async (req, res, next) => {
         if (!passwordMatched) {
             throw new Error("Password Incorrect!");
         }
-
+        const token = utils.create_jwt_token({ email: user.email });
         let success_res = {
             success: true,
             data: {
-                token: "hellojwttokenexample",
+                token: token,
             },
             error: {},
         };
