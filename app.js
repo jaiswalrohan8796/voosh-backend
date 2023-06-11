@@ -3,12 +3,13 @@ const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
 const passport = require("passport");
+const cors = require("cors");
 
 //imports
 const userRoutes = require("./routes/userRoutes.js");
 
 //config
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 require("dotenv").config();
 const app = express();
 app.use(express.json());
@@ -17,6 +18,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(passport.initialize());
 
 //routes
+app.use(cors());
 app.use(userRoutes);
 
 //server
