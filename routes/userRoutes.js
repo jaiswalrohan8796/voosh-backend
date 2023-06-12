@@ -1,6 +1,6 @@
 const utils = require("../utils/utils.js");
 const user_controller = require("../controllers/User.js");
-
+const order_controller = require("../controllers/Order.js");
 const router = require("express").Router();
 
 function getTokenFromHeader(req) {
@@ -26,12 +26,8 @@ const authenticate_user = async (req, res, next) => {
         if (!user_exist) {
             throw new Error("Authorization token incorrect");
         }
-        let success_res = {
-            success: true,
-            data: user_exist,
-            error: {},
-        };
-        res.json(success_res);
+        req.user = user_exist;
+        next();
     } catch (err) {
         console.log(err);
         let error_res = {
@@ -124,14 +120,59 @@ router.post("/login", async (req, res, next) => {
     }
 });
 
-router.post("/add-order", (req, res, next) => {
-    const { user_id, sub_total, phone_number } = req.body;
-    res.json({ user_id, sub_total, phone_number });
+router.post("/add-order", authenticate_user, async (req, res, next) => {
+    try {
+        const { user_id, sub_total, phone_number } = req.body;
+        const save_res = await order_controller.addOrder({
+            user_id,
+            sub_total,
+            phone_number,
+        });
+        let success_res = {
+            success: true,
+            data: save_res,
+            error: {},
+        };
+        res.json(success_res);
+    } catch (err) {
+        console.log(err);
+        let err_res = {
+            success: false,
+            data: {},
+            error: {
+                code: 500,
+                message: err.message,
+            },
+        };
+        res.json(err_res);
+    }
 });
 
-router.get("/get-order", (req, res, next) => {
-    const user_id = req.params.user_id;
-    res.json({ user_id });
+router.get("/get-order", authenticate_user, async (req, res, next) => {
+    try {
+        const user_id = req.query.user_id;
+        let order_details = await order_controller.getOrder(user_id);
+        if (!order_details) {
+            throw new Error(`No order found for user_id: ${user_id}`);
+        }
+        let success_res = {
+            success: true,
+            data: order_details,
+            error: {},
+        };
+        res.json(success_res);
+    } catch (err) {
+        console.log(err);
+        let err_res = {
+            success: false,
+            data: {},
+            error: {
+                code: 500,
+                message: err.message,
+            },
+        };
+        res.json(err_res);
+    }
 });
 
 module.exports = router;
